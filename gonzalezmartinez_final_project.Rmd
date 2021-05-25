@@ -1,0 +1,553 @@
+---
+title: "Dementia Diagnosis Rates in England: A Data Story"
+author: "J.S. González Martínez"
+date: "2021-05-21"
+output: html_document
+---
+
+**Hello World! Welcome to my data visualisation project!** 
+
+In this page, I will show you how I used publicly available data from the NHS to graph a time series of dementia diagnosis rates in England. This project has been developed for the [PSY6422 Data Management and Visualisation module](https://tomstafford.github.io/psy6422/), which is part of the MSc in [Psychological Research Methods with Data Science](https://www.sheffield.ac.uk/postgraduate/taught/courses/2021/psychological-research-methods-data-science-msc) at the [University of Sheffield](https://www.sheffield.ac.uk/). Please visit my [github repository](https://github.com/jsgm21) to find all documentation related to this project.
+
+
+**Motivation and Data Origins**
+
+I found a public data repository of [dementia diagnoses](https://digital.nhs.uk/data-and-information/publications/statistical/recorded-dementia-diagnoses) managed by the NHS. Data from this repository have been used to develop a [Dementia Publication Dashboard](https://app.powerbi.com/view?r=eyJrIjoiOTA1NDk5ZjctY2Q1ZC00NGMxLTkwODYtYzc2ZGE1OWQyMDBmIiwidCI6IjUwZjYwNzFmLWJiZmUtNDAxYS04ODAzLTY3Mzc0OGU2MjllMiIsImMiOjh9), which provides an insight into the prevalence of dementia in England. 
+
+Not every person suffering from dementia has a formal diagnosis. The **national goal** (i.e., benchmark rate) is to ensure that at least 2/3 **(≥ 66.7%)** of those suffering from dementia have a formal diagnosis. The NHS calculates dementia diagnosis rates by comparing the number of *recorded diagnoses* against the *number of people estimated* to have dementia. Diagnosis rates are calculated for people aged 65 and above.
+
+**Research Questions**
+
+As I was playing around with the dashboard, I noticed that there were no comparisons of regional vs national dementia diagnosis rates. I thus saw the perfect opportunity to ask the following questions: 
+
+*1) How have regional rates (compared to national rates) changed overtime?* 
+
+*2) Are there regions that have consistently been above or below the national diagnosis rates and the benchmark rate?* 
+
+For those not familiar with English geography, here is a picture depicting the 9 statistical regions of England. 
+
+PICTURE
+
+**Data Preparation**
+
+This project was developed using RMarkdown. I used packages from these libraries:
+
+```{r, results = 'hide', warning = FALSE, message = FALSE}
+library(tidyverse)
+library(gghighlight)
+library(rmarkdown)
+library(purrr)
+library(lubridate)
+library(gganimate)
+library(RColorBrewer)
+library(jcolors)
+library(plotly)
+library(plyr)
+library(highcharter) 
+```
+
+**Step 1:** *Load data*
+
+I used data from May 2016 until April 2021. Data were provided separately by the NHS in files that record a year's period. I loaded 5 raw data sets.
+
+```{r}
+df_2017 <- read.csv("dem-diag-ind-phe-Apr-2017.csv") #data period start: May 2016
+
+df_2018 <- read.csv("dem-diag-ind-phe-Apr-2018.csv")
+
+df_2019 <- read.csv("dem-diag-ind-phe-Apr-2019.csv")
+
+df_2020 <- read.csv("dem-diag-ind-phe-Apr-2020.csv")
+
+df_2021 <- read.csv("dem-diag-ind-phe-Apr-2021.csv") #data period end: April 2021
+```
+
+
+**Step 2:** Check data
+
+Let's have a look at the variables in the data set and a random sample of observations. The code below is representative of all data sets because they have been structured identically by the NHS. 
+
+```{r}
+names(df_2017) #returns the names of the variables in a data frame
+
+#use paged_Table to make table output neat for publishing
+
+paged_table(sample_n(df_2017, 10)) #returns a random sample of 10 observations
+```
+
+A couple of challenges were clear:
+
+**Challenge 1:** Dates were not in the correct format (YYYY/MM/DD) and class type (i.e., date). 
+
+**Challenge 2:** The variable "MEASURE" needed to be split into separate variables. The NHS collected several dementia measures but I was only interested in visualising the measure "DIAG_RATE_65_PLUS"   
+
+**Challenge 3:** Organisation types (ORG_TYPE) and codes (ORG_CODE) represent a mix of local, regional, and national entities. I needed to extract England and its regions. Overcoming this challenge involved doing research and using resources from the [Office for National Statistics](https://geoportal.statistics.gov.uk/datasets/register-of-geographic-codes-november-2020-for-the-united-kingdom) to determine which organisational codes were relevant for this project. 
+
+**Challenge 4:** Develop code that would address challenges 1-3 simultaneously for all raw data sets. I could not merge the data frames after upload because they exceeded the memory capacity of my computer.
+
+**Solution:**
+```{r}
+class(df_2017$ACH_DATE) #returns the class type as a character rather than a date, used df_2017 as example
+
+#create a list of the data frames so changes are applied to all of them
+
+list_dfs <- list(df_2017, df_2018, df_2019, df_2020, df_2021)
+
+#use map_dfr and pipes to create the processed data frame. I chose this method because all data sets were structured identically - thank you, NHS!
+
+df_proc <- map_dfr(list_dfs, ~{
+  .x %>% #create a new date variable (DATE) by converting the old dates into the correct format 
+    mutate(DATE = as.Date(ACH_DATE, format = "%d%B%Y")) %>% #split the values of the MEASURE variable so each measure is now its own variable 
+  pivot_wider(
+    names_from = MEASURE,
+    values_from = VALUE) %>% #filter data using the ORG_TYPE codes that correspond to England and its regions
+  filter(ORG_TYPE == "PHE_CENTRE" | ORG_TYPE == "COUNTRY_GEOGRAPHICAL")})
+
+class(df_proc$DATE) #verify that class type is indeed a date
+
+paged_table(sample_n(df_proc, 10)) #returns a random sample of the processed data frame in a neat output
+
+```
+**Visualising the data**
+
+*Visual diagnostic*
+
+I developed a basic, diagnostic graph to get an insight of whether I needed to do more adjustments to the processed data.
+
+```{r, fig.dim = c(10, 5)}
+ggplot(data = df_proc, 
+       mapping = aes(x = DATE, 
+                     y = DIAG_RATE_65_PLUS, 
+                     colour = NAME)) +
+  #customise y axis
+  ylim(c(50, 80)) +
+  #use geom_line to show regions as lines
+  geom_line(size = 1, alpha =0.9) +
+  #use geom_hline to set the benchmark rate
+  geom_hline(yintercept = 66.7, linetype = 1, size = 1, colour = "dark grey") +
+  # use the palette Safe from the rcartocolor package
+   scale_color_brewer(palette = "Paired") + 
+  #customise theme to plain black and white 
+  theme_bw() +
+  #assign labels
+  labs(x = "Year", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnosis rates in England",
+       caption = "Data Source: NHS")
+```
+
+There were multiple issues with this graph, but the most salient one was that Yorkshire and the Humber was not shown consistently in the graph. This was likely due to a mistake in coding the raw data.
+
+I standardised Yorkshire and the Humber and other regional names  
+
+```{r}
+#correct "yorkshire and humber" to "yorkshire and the humber"
+
+df_proc$NAME [df_proc$NAME == "YORKSHIRE AND HUMBER"] <- "YORKSHIRE AND THE HUMBER"
+
+#use revalue to rename regions so they are no longer in all capitals 
+
+df_proc$NAME <- revalue(df_proc$NAME, 
+                         c("ENGLAND" = "England",
+                           "LONDON" = "London",
+                           "WEST MIDLANDS" = "West Midlands",
+                           "NORTH EAST" = "North East",
+                           "YORKSHIRE AND THE HUMBER" = "Yorkshire and the Humber",
+                           "EAST MIDLANDS" = "East Midlands",
+                           "EAST OF ENGLAND" = "East of England",
+                           "NORTH WEST" = "North West", 
+                           "SOUTH EAST" = "South East",
+                           "SOUTH WEST" = "South West"))
+
+#use 'data.frame' and 'complete' to ensure that the region and date combinations are stable. 
+
+#this line is essential because graphs were still depicting Yorkshire and the Humber incorrectly in a working version of this project where I did not use such code
+
+df_proc <- data.frame(complete(df_proc, DATE, NAME))
+
+```
+
+
+Then I checked that the naming issues have been solved. I also Made a few tweaks to the original diagnositc plot to make it more visually appealing.
+
+```{r, fig.dim = c(10, 5)}
+
+ggplot(data = df_proc, 
+       mapping = aes(x = DATE, 
+                     y = DIAG_RATE_65_PLUS, 
+                     colour = NAME)) +
+  #customise y axis
+  ylim(c(50, 80)) +
+  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(0.02,0)) +
+  #use geom_line to show regions as lines
+  geom_line(size = 1, alpha =0.9) +
+  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
+  annotate("text", x = as.Date("2016-10-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4,) +
+  # use the palette Safe from the rcartocolor package
+  scale_color_brewer(palette = "Spectral") + 
+   #customise theme to plain black and white 
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_blank(),
+        # change margin size, value order top, right, bottom, left
+    plot.margin = margin(1,1,1,1,"mm")) +
+  #assign labels
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnosis rates in England",
+       caption = "Data Source: NHS")
+```
+
+**Developing an engaging plot**
+
+The plot shown above could answer my research questions, but it's a boring graph, it's hard to read, and it does not use the potential of R as a graphic tool.
+
+I developed a series of interactive graphs with the objective to create a visualisation where trends were easily understandable and comparisons between regions could easily be made.
+
+**Attempt 1**
+
+I developed this animated plot with the intention to visualise better the progress of national and regional trends 
+
+```{r}
+gr_int0 <- ggplot(data = df_proc, 
+       mapping = aes(x = DATE, 
+                     y = DIAG_RATE_65_PLUS, 
+                     colour = ORG_CODE)) +
+  #customise y axis
+  ylim(c(50, 80)) +
+  scale_x_date(limits = as.Date(c("2016-05-31","2021-11-30")), date_breaks = "9 month", date_labels =  "%b %Y", expand = c(.02,0)) +
+  #add the lines to the chart
+  geom_point() +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
+  annotate("text", x = as.Date("2016-10-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4) +
+  shadowtext::geom_shadowtext(data = df_proc,
+                              mapping = aes (x = DATE,
+                                             y = DIAG_RATE_65_PLUS,
+                                             label = NAME),
+                              hjust=-0.1, vjust = 0, bg.color = "white") +
+  scale_color_jcolors(palette = "pal8") +
+  theme_bw() +
+  # customise the theme a bit more
+  theme(
+     panel.grid.major.y = element_blank(),
+     panel.grid.minor.y = element_blank(),
+    # remove legend
+    legend.position = "none",
+    # change margin size
+    plot.margin = margin(1,1,1,1,"mm")) +
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnose rates in England",
+       caption = "Data Source: NHS") +
+  transition_reveal(DATE) #activates display of time series
+
+animate(gr_int0, #control speed of animation 
+        fps = 7, #control immediate repetition of animation, so viewers have time to digest trends
+        end_pause = 30)
+```
+
+I found the visualisation somewhat overwhelming, so I experimented with the function `facet_wrap`, which allows to split the animated graph. 
+
+Before `facet_wrap`, I coded a "dummy" variable in the processed data set to control the order of the facets. I wanted to show England as the bottom subgraph and the regions on top.
+
+```{r}
+#make a dummy variable for face_wrap later, future 'you' will thank me later
+
+df_proc <- df_proc %>% #make new variable by revaluing ORG_TYPE 
+  mutate(FACET_ORDER = revalue(ORG_TYPE, 
+                         c("PHE_CENTRE" = 1,
+                           "COUNTRY_GEOGRAPHICAL" = 2)
+                         )
+         )
+```
+
+Then I implemented `facet_wrap` to get the graph below
+
+```{r}
+gr_int1 <- ggplot(data = df_proc, 
+       mapping = aes(x = DATE, 
+                     y = DIAG_RATE_65_PLUS, 
+                     colour = ORG_CODE)) +
+  #customise y axis
+  ylim(c(55, 80)) +
+  scale_x_date(limits = as.Date(c("2016-05-31","2021-11-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(.02,0)) +
+  #add the lines to the chart
+   geom_point() +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
+  annotate("text", x = as.Date("2016-10-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4) +
+  shadowtext::geom_shadowtext(data = df_proc,
+                              mapping = aes (x = DATE,
+                                             y = DIAG_RATE_65_PLUS,
+                                             label = NAME),
+                              hjust=-0.1, vjust = 0, bg.color = "white") +
+  # use the palette Safe from the rcartocolor package
+ scale_color_jcolors(palette = "pal8") +
+  # facet_wrap(~NAME) +
+   facet_wrap(~FACET_ORDER, ncol = 1, labeller = labeller(FACET_ORDER = 
+    c("1" = "Regional Trends",
+      "2" = "National Trend"))) +
+  #coord_flip()+
+  theme_bw() +
+  # customise the theme a bit more
+  theme(
+     panel.grid.major.y = element_blank(),
+     panel.grid.minor.y = element_blank(),
+    # remove legend
+    legend.position = "none",
+    # change margin size
+    plot.margin = margin(1,1,1,1,"mm")) +
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnose rates in England",
+       caption = "Data Source: NHS") +
+  transition_reveal(DATE) #activates display of time series
+
+animate(gr_int1, #control speed of animation 
+        fps = 7, #control immediate repetition of animation, so viewers have time to digest trends
+        end_pause = 35)
+```
+
+I also experimented with individual facets, breaking down each geography into individual graphs. I used the variable `NAME` rather than `FACET_ORDER` to control the splitting of graphs:
+
+```{r}
+gr_int2 <- ggplot(data = df_proc, 
+       mapping = aes(x = DATE, 
+                     y = DIAG_RATE_65_PLUS, 
+                     colour = ORG_CODE)) +
+  #customise y axis
+  ylim(c(55, 80)) +
+  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "12 month", date_labels =  "%b %Y", expand = c(.02,0)) +
+  #add the lines to the chart
+  geom_point() +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
+  annotate("text", x = as.Date("2017-05-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4) +
+  shadowtext::geom_shadowtext(data = df_proc,
+                              mapping = aes (x = DATE,
+                                             y = DIAG_RATE_65_PLUS,
+                                             label = NAME),
+                              hjust=-0.1, vjust = 0, bg.color = "white") +
+  # use the palette Safe from the rcartocolor package
+scale_color_jcolors(palette = "pal8") +
+  facet_wrap(~NAME, ncol = 2) +
+  theme_bw() +
+  # customise the theme a bit more
+  theme(
+     panel.grid.major.y = element_blank(),
+     panel.grid.minor.y = element_blank(),
+    # remove legend
+    legend.position = "none",
+    # change margin size
+    plot.margin = margin(1,1,1,1,"mm")) +
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnose rates in England",
+       caption = "Data Source: NHS") +
+  transition_reveal(DATE) #activates display of time series
+
+animate(gr_int2, #control speed of animation 
+        fps = 7, #control immediate repetition of animation, so viewers have time to digest trends
+        end_pause = 35)
+```
+
+**Attempt 2**
+
+Whilst I appreciated the motion provided by the animated time series, I reckoned that a more effective visualisation would be less overwhelming and would allow to select different regions to facilitate comparisons
+
+```{r, fig.dim = c(10, 5)}
+gr_int3 <- ggplot(data = df_proc, 
+       mapping = aes(x = DATE, 
+                     y = DIAG_RATE_65_PLUS, 
+                     colour = NAME)) +
+  #customise y axis
+  ylim(c(50, 80)) +
+  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(0.02,0)) +
+  #use geom_line to show regions as lines
+  geom_line(size = 1, alpha =0.9) +
+  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
+  annotate("text", x = as.Date("2016-12-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4,) +
+  # use the palette Safe from the rcartocolor package
+  scale_color_brewer(palette = "Spectral") +
+   #customise theme to plain black and white 
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_blank(),
+        # change margin size, value order top, right, bottom, left
+    plot.margin = margin(1,1,1,1,"mm")) +
+  #assign labels
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnosis rates in England",
+       caption = "Data Source: NHS")
+
+ggplotly() %>% 
+  style(textposition = "top")
+```
+
+
+we can do better than that
+
+```{r}
+# rename
+
+df_int <- dplyr::rename(df_proc, Date = DATE, Location = NAME, Rate = DIAG_RATE_65_PLUS)
+```
+
+then create plot
+
+
+```{r, fig.dim = c(10, 5)}
+d <- highlight_key(df_int, ~Location)
+
+gr_int4 <- ggplot(d,
+            mapping = aes(x = Date, 
+                          y= Rate, 
+                          group = Location, 
+                          colour = Location)) +
+  ylim(c(50, 80)) +
+  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(0.02,0)) +
+  #use geom_line to show regions as lines
+  geom_line(size = 1, alpha =0.9) +
+  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
+  annotate("text", x = as.Date("2016-12-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4,) +
+  # use the palette Safe from the rcartocolor package
+  scale_color_brewer(palette = "Spectral") +
+   #customise theme to plain black and white 
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_blank(),
+        # change margin size, value order top, right, bottom, left
+    plot.margin = margin(1,1,1,1,"mm")) +
+  #assign labels
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnosis rates in England",
+       caption = "Data Source: NHS")
+
+gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y")) %>% 
+  style(textposition = "top") %>% 
+  layout(hovermode = "x unified")
+
+highlight(gg, 
+          #"plotly_hover",
+          defaultValues = "England")
+
+#gg %>% layout(hovermode = "x unified")
+```
+
+
+
+Almost there 
+
+```{r}
+d <- highlight_key(df_int, ~Location)
+
+
+gr_int4 <- ggplot(d,
+            aes(Date, Rate, group = Location)) +
+  geom_line()
+
+gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y"))
+
+highlight(gg, "plotly_hover", defaultValues = "England
+```
+
+
+```{r, fig.dim = c(10, 5)}
+
+ggplotly(gr_int3, tooltip = c("text", "x", "y")) %>% 
+  style(textposition = "top") %>% 
+  layout(hovermode = "x unified")
+```
+
+
+
+
+**Summary**
+Brief thoughts on what you have learnt, what you might do next if you had more time / more data
+
+**Appendix**
+
+
+attempt 4
+```{r}
+
+
+library(tidyverse)
+library(highcharter)
+
+hchart(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME)) %>% 
+ # hc_yAxis(reversed = TRUE) %>% 
+  hc_plotOptions(
+    series = list(
+      events = list(
+        mouseOver = JS("function() { if(this.options.color !== 'red') {this.update({color: 'red'})} }"),
+        mouseOut = JS("function() { if(this.options.color === 'red') {this.update({color: '#ddd'})} }")
+        ),
+      states = list(
+        hover = list(
+          enabled = FALSE,
+          lineWidth = 5,
+          colour = "red"
+        )
+      )
+    )) #%>% 
+  #hc_colors("#dbdbdb")
+
+
+
+```
+
+
+attempt 3
+
+```{r}
+
+highchart(type = "stock") %>% 
+  hc_add_series(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME)) %>% 
+  #hc_add_theme(hc_theme_darkunica()) %>% 
+  hc_title(text = "Dementia Diagnoses Rates in England: National and Regional Trends")
+  
+
+```
+
+
+attempt 2 
+
+```{r}
+
+hchart(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME))
+
+```
+
+
+Run
+```{r}
+
+
+```
+
+Resources:
+
+From static to animated time series: the tidyverse way
+
+https://medium.com/epfl-extension-school/from-static-to-animated-time-series-the-tidyverse-way-d696eb75f2fa
+
+https://blog.exploratory.io/filter-data-with-dplyr-76cf5f1a258e
+
+
+HOW CAN I FORMAT A STRING CONTAINING A DATE INTO R “DATE” OBJECT? | R FAQ
+
+https://stats.idre.ucla.edu/r/faq/how-can-i-format-a-string-containing-a-date-into-r-date-object/
+
+Plotting multiple variables at once using ggplot2 and tidyr
+
+https://scc.ms.unimelb.edu.au/resources-list/simple-r-scripts-for-analysis/r-scripts
+
+
+changing ggplot2::facet_wrap title from the default
+https://stackoverflow.com/questions/48860158/changing-ggplot2facet-wrap-title-from-the-default/48860657
+
+
