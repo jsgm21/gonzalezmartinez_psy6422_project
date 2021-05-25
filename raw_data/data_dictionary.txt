@@ -1,0 +1,23 @@
+# Overview
+
+all data sets were downloaded from the following NHS website: https://digital.nhs.uk/data-and-information/publications/statistical/recorded-dementia-diagnoses
+
+each data set contains data for 12 months
+
+all data sets are structured identically
+
+# Data dictionary - taken from the NHS: https://digital.nhs.uk/data-and-information/publications/statistical/recorded-dementia-diagnoses/recorded-dementia-diagnoses-supporting-information#data-dictionary
+
+Dementia 65+ Diagnosis Rate Indicator 12 Month Time Series, by Geographical Organisation, Month-Year
+
+CSV filename: dem-diag-ind-phe-<mmm>-<yyyy>.csv
+
+Variables - values: 
+
+INDICATOR - DEMENTIA: 65+ ESTIMATED DIAGNOSIS RATE
+ORG_TYPE - Organisational breakdown
+ORG_CODE - Organisational Data Service organisation identifier. All statistical geographies within England have a 9-digit ONS code. These codes ensure that all geographies are referenced consistently across government to allow data to be aggregated, linked, presented and compared on a common base.
+NAME - Organisation name
+MEASURE - DEMENTIA_REGISTER_65_PLUS – Recorded diagnoses of dementia ages 65+ / DEMENTIA_ESTIMATE_65_PLUS – Expected diagnoses of dementia ages 65+ / DIAG_RATE_65_PLUS – Diagnosis rate (recorded/expected) ages 65+ / DIAG_RATE_65_PLUS_UL – Upper 95% confidence limit of diagnosis rate ages 65+ / DIAG_RATE_65_PLUS_LL – Lower 95% confidence limit of diagnosis rate ages 65+.
+VALUE - Value of measure.
+DQ - Flags organisations with a smaller denominator population than the CFAS II reference population with a ‘1’. Values for these organisations should be interpreted with caution.
