@@ -75,8 +75,9 @@ Let's have a look at the variables in the data set and a random sample of observ
 ```{r}
 names(df_2017) #returns the names of the variables in a data frame
 
-#use paged_Table to make table output neat for publishing
-paged_table(sample_n(df_2017, 10)) #returns a random sample of 10 observations
+paged_table( #use paged_Table to make table output neat for publishing
+  sample_n( #returns a random sample of 10 observations
+    df_2017, 10))
 ```
 
 A couple of challenges were clear:
@@ -97,17 +98,20 @@ class(df_2017$ACH_DATE) #spot the problem: class type is a character rather than
 list_dfs <- list(df_2017, df_2018, df_2019, df_2020, df_2021)
 
 #use map_dfr and pipes to create the processed data frame. I chose this method because all data sets were structured identically - thank you, NHS!
-df_proc <- map_dfr(list_dfs, ~{
-  .x %>% #create a new date variable (DATE) by converting the old dates into the correct format 
-    mutate(DATE = as.Date(ACH_DATE, format = "%d%B%Y")) %>% #split the values of the MEASURE variable so each measure becomes its own variable 
+df_proc <- map_dfr(
+  list_dfs, ~{.x %>% #create a new date variable (DATE) by converting the old dates into the correct format
+    mutate(
+      DATE = as.Date(ACH_DATE, format = "%d%B%Y")) %>% #split the values of the MEASURE variable so each measure becomes its own variable 
   pivot_wider(
     names_from = MEASURE,
     values_from = VALUE) %>% #filter data using the ORG_TYPE codes that correspond to England and its regions
-  filter(ORG_TYPE == "PHE_CENTRE" | ORG_TYPE == "COUNTRY_GEOGRAPHICAL")})
+  filter(
+    ORG_TYPE == "PHE_CENTRE" | ORG_TYPE == "COUNTRY_GEOGRAPHICAL")})
 
 class(df_proc$DATE) #verify that class type is indeed a date
 
-paged_table(sample_n(df_proc, 10)) #returns a random sample of the processed data frame in a neat output
+paged_table(
+  sample_n(df_proc, 10)) #returns a random sample of the processed data frame in a neat output
 ```
 
 #### **Visualising the data**
@@ -117,25 +121,34 @@ paged_table(sample_n(df_proc, 10)) #returns a random sample of the processed dat
 I developed a basic, diagnostic graph to get an insight of whether I needed to do more adjustments to the processed data.
 
 ```{r, fig.dim = c(10, 5)}
-ggplot(data = df_proc, 
-       mapping = aes(x = DATE, 
-                     y = DIAG_RATE_65_PLUS, 
-                     colour = NAME)) +
-  #customise y axis
-  ylim(c(50, 80)) +
+ggplot(
+  data = df_proc,
+  mapping = aes(x = DATE,
+                y = DIAG_RATE_65_PLUS,
+                colour = NAME)) + #use colour = NAME so the regions get different colours
+  #customise y axis, lower and upper axis limit
+  ylim(
+    c(50, 80))+
   #use geom_line to show regions as lines
-  geom_line(size = 1, alpha =0.9) +
-  #use geom_hline to set the benchmark rate
-  geom_hline(yintercept = 66.7, linetype = 1, size = 1, colour = "dark grey") +
+  geom_line(
+    size = 1) +
+  #use geom_hline to set the benchmark rate, i.e., 66.7
+  geom_hline(
+    yintercept = 66.7, 
+    linetype = 1, #1 for a solid line 
+    size = 1, 
+    colour = "dark grey") +
   #use the Paired palette colour from the RColorBrewer package
-  scale_color_brewer(palette = "Paired") + 
+  scale_color_brewer(
+    palette = "Paired") + 
   #customise theme to plain black and white 
   theme_bw() +
-  #assign labels
-  labs(x = "Year", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnosis rates in England",
-       caption = "Data Source: NHS")
+  #assign graph labels
+  labs(
+    x = "Year", #x axis label
+    y = "Dementia diagnosis rate (%)", #y axis label
+    title = "Dementia diagnosis rates in England", #assigns chart tittle
+    caption = "Data Source: NHS") #assigns a caption
 ```
 
 There were multiple issues with this graph, but the most salient one was that Yorkshire and the Humber was not shown consistently in the graph. This was likely due to a mistake in coding the raw data.
@@ -146,205 +159,297 @@ I standardised Yorkshire and the Humber and other regional names:
 #correct "yorkshire and humber" to "yorkshire and the humber"
 df_proc$NAME [df_proc$NAME == "YORKSHIRE AND HUMBER"] <- "YORKSHIRE AND THE HUMBER"
 
-#use revalue to rename regions so they are no longer in all capitals 
-df_proc$NAME <- revalue(df_proc$NAME, 
-                         c("ENGLAND" = "England",
-                           "LONDON" = "London",
-                           "WEST MIDLANDS" = "West Midlands",
-                           "NORTH EAST" = "North East",
-                           "YORKSHIRE AND THE HUMBER" = "Yorkshire and the Humber",
-                           "EAST MIDLANDS" = "East Midlands",
-                           "EAST OF ENGLAND" = "East of England",
-                           "NORTH WEST" = "North West", 
-                           "SOUTH EAST" = "South East",
-                           "SOUTH WEST" = "South West"))
+#use revalue to rename 'NAME' regions so they are no longer in all capitals 
+df_proc$NAME <- revalue(
+  df_proc$NAME, #"old value" first, then "new value"
+  c("ENGLAND" = "England",
+    "LONDON" = "London", 
+    "WEST MIDLANDS" = "West Midlands",
+    "NORTH EAST" = "North East",
+    "YORKSHIRE AND THE HUMBER" = "Yorkshire and the Humber",
+    "EAST MIDLANDS" = "East Midlands",
+    "EAST OF ENGLAND" = "East of England",
+    "NORTH WEST" = "North West",
+    "SOUTH EAST" = "South East",
+    "SOUTH WEST" = "South West"))
 
 #use 'data.frame' and 'complete' to ensure that the region and date combinations are stable. It's a small line, but it is essential. 
-df_proc <- data.frame(complete(df_proc, DATE, NAME))
+df_proc <- data.frame(
+  complete(
+    df_proc, DATE, NAME))
 ```
 
 
 Then I checked that the naming issues have been solved. I also made a few tweaks to the original diagnositc plot to make it more visually appealing.
 
 ```{r, fig.dim = c(10, 5)}
-#I used a structure similar to the previous graph. I will only comment code to highlight changes
-ggplot(data = df_proc, 
-       mapping = aes(x = DATE, 
-                     y = DIAG_RATE_65_PLUS, 
-                     colour = NAME)) +
-  ylim(c(50, 80)) +
-  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(0.02,0)) +
-  #use geom_line to show regions as lines
-  geom_line(size = 1, alpha =0.9) +
-  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
-  annotate("text", x = as.Date("2016-10-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4,) +
-  # use the palette Safe from the rcartocolor package
-  scale_color_brewer(palette = "Spectral") + 
-   #customise theme to plain black and white 
+#I used a structure similar to the previous graph. I will only comment code to highlight differences.
+ggplot(
+  data = df_proc,
+  mapping = aes(x = DATE,
+                y = DIAG_RATE_65_PLUS,
+                colour = NAME)) +
+  ylim(
+    c(50, 80)) + 
+  #introduce and customise x axis limits by the start and end date of data collection 
+  scale_x_date(
+    limits = as.Date(
+      c("2016-05-31","2021-04-30")), #use 6 month breaks so the x axis values show intervals of 6 months
+    date_breaks = "6 month",
+    date_labels = "%b %Y",
+    expand = c(0.02,0)) + #use expand to control the white space between the axes and the data
+  geom_line(
+    size = 1) +
+  geom_hline(
+    yintercept = 66.7,
+    linetype = 2, #2 for a dashed line
+    size = 1, #change line colour to black
+    colour = "black") +
+  annotate( #label parameters for the benchmark rate line
+    "text",
+    x = as.Date("2016-10-31"), #controls where 'Benchmark' label appears in the graph
+    66.7, #y-value where the label is referenced
+    vjust = -0.5, #label positioning just above the line
+    label = "Benchmark rate", #name of the Benchmark label
+    size = 4) + #controls label size
+  #change the colour palette to "Spectral" for better contrast
+  scale_color_brewer(
+    palette = "Spectral") + 
   theme_bw() +
-  theme(panel.grid.minor = element_blank(),
-          panel.grid.major.y = element_blank(),
-        # change margin size, value order top, right, bottom, left
-    plot.margin = margin(1,1,1,1,"mm")) +
-  #assign labels
-  labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnosis rates in England",
-       caption = "Data Source: NHS")
+  theme( #customise grid lines
+    panel.grid.minor = element_blank(), #no minor grid lines for any axis
+    panel.grid.major.y = element_blank(), #no major y-grid lines so we're only left with major x-grid lines which are helpful for reading the chart
+    #change margin size of the graph, value order: top, right, bottom, left
+    plot.margin = margin( #set parameters and units to mm
+      1,1,1,1,"mm")) +
+  labs(
+    x = "Month",
+    y = "Dementia diagnosis rate (%)",
+    title = "Dementia diagnosis rates in England",
+    subtitle = "From May 2016 to April 2021", #introduce a subtitle to make graph more informative
+    caption = "Data Source: NHS")
 ```
 
 **Developing an engaging plot**
 
 The plot shown above could answer my research questions, but it's a boring graph, it's hard to read, and it does not use the potential of R as a graphic tool.
 
-I developed a series of interactive graphs with the objective to create a visualisation where trends were easily understandable and comparisons between regions could easily be made.
+I developed a series of interactive graphs with the objective to create a visualisation where trends were easily understandable and comparisons between regions could be easily made.
 
 **Attempt 1**
 
 I developed this animated plot with the intention to visualise better the progress of national and regional trends 
 
 ```{r}
-gr_int0 <- ggplot(data = df_proc, 
-       mapping = aes(x = DATE, 
-                     y = DIAG_RATE_65_PLUS, 
-                     colour = ORG_CODE)) +
-  #customise y axis
-  ylim(c(50, 80)) +
-  scale_x_date(limits = as.Date(c("2016-05-31","2021-11-30")), date_breaks = "9 month", date_labels =  "%b %Y", expand = c(.02,0)) +
-  #add the lines to the chart
-  geom_point() +
-  geom_line(size = 1) +
-  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
-  annotate("text", x = as.Date("2016-10-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4) +
-  shadowtext::geom_shadowtext(data = df_proc,
-                              mapping = aes (x = DATE,
-                                             y = DIAG_RATE_65_PLUS,
-                                             label = NAME),
-                              hjust=-0.1, vjust = 0, bg.color = "white") +
-  scale_color_jcolors(palette = "pal8") +
+#I used a structure similar to the previous graph. I will only comment code to highlight differences.
+#save graph structure into an object that will be used later for animation
+gr_int0 <- ggplot(
+  data = df_proc,
+  mapping = aes(
+    x = DATE,
+    y = DIAG_RATE_65_PLUS,
+    colour = NAME)) +
+  ylim(
+    c(50, 80)) +
+  scale_x_date(
+    limits = as.Date(
+      c("2016-05-31", "2021-11-30")), #change upper limit to a date beyond data collection to give space to animated labels
+    date_breaks = "9 month", #change data breaks from 6 to 9 month intervals to facilitate reading
+    date_labels =  "%b %Y",
+    expand = c(.02,0)) +
+  geom_point() + #introduce points for the animation
+  geom_line(
+    size = 1) +
+  geom_hline(
+    yintercept = 66.7,
+    linetype = 2,
+    size = 1,
+    colour = "black") +
+  annotate(
+    "text",
+    x = as.Date("2016-10-31"),
+    66.7,
+    vjust = -0.5,
+    label = "Benchmark rate",
+    size = 4) + #introduce shadowtext 
+  shadowtext::geom_shadowtext( #geom_shadowtext takes NAME values (i.e., regions) and places them next to each region line in the animation. You will see soon!
+    data = df_proc,
+    mapping = aes(
+      x = DATE,
+      y = DIAG_RATE_65_PLUS,
+      label = NAME), #animated labels will take NAME values
+    hjust=-0.1, #makes region names show just next to the line
+    vjust = 0,  #makes region names show just next to the line
+    bg.color = "white") + #bg.color as white because there is no need for a background colour for our region names
+  scale_color_jcolors(
+    palette = "pal8") + #important change, introduce new colour package -jcolors- and new colour palette -pal8- to make animation more readable
   theme_bw() +
-  # customise the theme a bit more
   theme(
      panel.grid.major.y = element_blank(),
      panel.grid.minor.y = element_blank(),
-    # remove legend
-    legend.position = "none",
-    # change margin size
-    plot.margin = margin(1,1,1,1,"mm")) +
-  labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnose rates in England",
-       caption = "Data Source: NHS") +
-  transition_reveal(DATE) #activates display of time series
+     legend.position = "none", #remove legend since we'll have animated features from shadowtext
+     plot.margin = margin(1,1,1,1,"mm")) +
+  labs(
+    x = "Month",
+    y = "Dementia diagnosis rate (%)",
+    title = "Dementia diagnosis rates in England",
+    subtitle = "From May 2016 to April 2021",
+    caption = "Data Source: NHS") +
+  transition_reveal(DATE) #activate animate display of time series
 
-animate(gr_int0, #control speed of animation 
-        fps = 7, #control immediate repetition of animation, so viewers have time to digest trends
-        end_pause = 30)
+#animation parameters
+animate(
+  gr_int0, #object used to save the graph structure
+  fps = 7, #control speed of animation
+  end_pause = 35) #control immediate repetition of animation, so viewers have time to digest trends
 ```
 
 I found the visualisation somewhat overwhelming, so I experimented with the function `facet_wrap`, which allows to split the animated graph. 
 
-Before `facet_wrap`, I coded a "dummy" variable in the processed data set to control the order of the facets. I wanted to show England as the bottom subgraph and the regions on top.
+Before using `facet_wrap`, I coded a "dummy" variable in the processed data set to control the order of the facets. I wanted to show England in the bottom part of the new graph and the regions on top.
 
 ```{r}
 #make a dummy variable for face_wrap later, future 'you' will thank me later
-
-df_proc <- df_proc %>% #make new variable by revaluing ORG_TYPE 
-  mutate(FACET_ORDER = revalue(ORG_TYPE, 
+df_proc <- df_proc %>% #make new variable by revaluing ORG_TYPE values
+  mutate(
+    FACET_ORDER = revalue(ORG_TYPE, 
                          c("PHE_CENTRE" = 1,
-                           "COUNTRY_GEOGRAPHICAL" = 2)
-                         )
-         )
+                           "COUNTRY_GEOGRAPHICAL" = 2))) #assign values 1 and 2 to control order
 ```
 
 Then I implemented `facet_wrap` to get the graph below
 
 ```{r}
-gr_int1 <- ggplot(data = df_proc, 
-       mapping = aes(x = DATE, 
-                     y = DIAG_RATE_65_PLUS, 
-                     colour = ORG_CODE)) +
-  #customise y axis
-  ylim(c(55, 80)) +
-  scale_x_date(limits = as.Date(c("2016-05-31","2021-11-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(.02,0)) +
-  #add the lines to the chart
-   geom_point() +
-  geom_line(size = 1) +
-  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
-  annotate("text", x = as.Date("2016-10-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4) +
-  shadowtext::geom_shadowtext(data = df_proc,
-                              mapping = aes (x = DATE,
-                                             y = DIAG_RATE_65_PLUS,
-                                             label = NAME),
-                              hjust=-0.1, vjust = 0, bg.color = "white") +
-  # use the palette Safe from the rcartocolor package
- scale_color_jcolors(palette = "pal8") +
-  # facet_wrap(~NAME) +
-   facet_wrap(~FACET_ORDER, ncol = 1, labeller = labeller(FACET_ORDER = 
-    c("1" = "Regional Trends",
-      "2" = "National Trend"))) +
-  #coord_flip()+
+#I used a structure similar to the previous graph. I will only comment code to highlight differences.
+gr_int1 <- ggplot(
+  data = df_proc,
+  mapping = aes(x = DATE,
+                y = DIAG_RATE_65_PLUS,
+                colour = NAME)) +
+  ylim(
+    c(55, 80)) +
+  scale_x_date(
+    limits = as.Date(
+      c("2016-05-31","2021-11-30")),
+    date_breaks = "6 month", #change date breaks back to 6 month intervals for reading ease
+    date_labels =  "%b %Y", 
+    expand = c(.02,0)) +
+  geom_point() +
+  geom_line(
+    size = 1) +
+  geom_hline(
+    yintercept = 66.7,
+    linetype = 2,
+    size = 1,
+    colour = "black") +
+  annotate(
+    "text",
+    x = as.Date("2016-10-31"),
+    66.7,
+    vjust = -0.5,
+    label = "Benchmark rate",
+    size = 4) +
+  shadowtext::geom_shadowtext(
+    data = df_proc,
+    mapping = aes (x = DATE,
+                   y = DIAG_RATE_65_PLUS,
+                   label = NAME),
+    hjust=-0.1,
+    vjust = 0,
+    bg.color = "white") +
+ scale_color_jcolors(
+   palette = "pal8") +
+   facet_wrap( #introduce facets
+     ~FACET_ORDER, #facets will be split based on order from "dummy" variable
+     ncol = 1, #number of columns is 1 so we have top and bottom subgrpahs shown individually
+     labeller = labeller(
+       FACET_ORDER = #labeller lets us name the subgraphs using values from the "dummy" order variable
+         c("1" = "Regional Trends",
+           "2" = "National Trend"))) +
   theme_bw() +
-  # customise the theme a bit more
   theme(
      panel.grid.major.y = element_blank(),
      panel.grid.minor.y = element_blank(),
-    # remove legend
-    legend.position = "none",
-    # change margin size
-    plot.margin = margin(1,1,1,1,"mm")) +
-  labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnose rates in England",
-       caption = "Data Source: NHS") +
-  transition_reveal(DATE) #activates display of time series
+     legend.position = "none",
+     plot.margin = margin(1,1,1,1,"mm")) +
+  labs(
+    x = "Month",
+    y = "Dementia diagnosis rate (%)",
+    title = "Dementia diagnosis rates in England",
+    subtitle = "From May 2016 to April 2021",
+    caption = "Data Source: NHS") +
+  transition_reveal(DATE)
 
-animate(gr_int1, #control speed of animation 
-        fps = 7, #control immediate repetition of animation, so viewers have time to digest trends
-        end_pause = 35)
+animate(
+  gr_int1,
+  fps = 7,
+  end_pause = 35)
 ```
 
 I also experimented with individual facets, breaking down each geography into individual graphs. I used the variable `NAME` rather than `FACET_ORDER` to control the splitting of graphs:
 
 ```{r}
-gr_int2 <- ggplot(data = df_proc, 
-       mapping = aes(x = DATE, 
-                     y = DIAG_RATE_65_PLUS, 
-                     colour = ORG_CODE)) +
-  #customise y axis
-  ylim(c(55, 80)) +
-  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "12 month", date_labels =  "%b %Y", expand = c(.02,0)) +
-  #add the lines to the chart
+#I used a structure similar to the previous graph. I will only comment code to highlight differences.
+gr_int2 <- ggplot(
+  data = df_proc,
+  mapping = aes(
+    x = DATE,
+    y = DIAG_RATE_65_PLUS,
+    colour = NAME)) +
+  ylim(
+    c(55, 80)) +
+  scale_x_date(
+    limits = as.Date(
+      c("2016-05-31","2021-04-30")),
+    date_breaks = "12 month", #change date break to 12 month intervals for reading ease 
+    date_labels = "%b %Y",
+    expand = c(.02,0)) +
   geom_point() +
-  geom_line(size = 1) +
-  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
-  annotate("text", x = as.Date("2017-05-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4) +
-  shadowtext::geom_shadowtext(data = df_proc,
-                              mapping = aes (x = DATE,
-                                             y = DIAG_RATE_65_PLUS,
-                                             label = NAME),
-                              hjust=-0.1, vjust = 0, bg.color = "white") +
-  # use the palette Safe from the rcartocolor package
-scale_color_jcolors(palette = "pal8") +
-  facet_wrap(~NAME, ncol = 2) +
+  geom_line(
+    size = 1) +
+  geom_hline(
+    yintercept = 66.7,
+    linetype = 2,
+    size = 1,
+    colour = "black") +
+  annotate(
+    "text",
+    x = as.Date("2017-05-31"),
+    66.7,
+    vjust = -0.5,
+    label = "Benchmark rate",
+    size = 4) +
+  shadowtext::geom_shadowtext(
+    data = df_proc,
+    mapping = aes (x = DATE,
+                   y = DIAG_RATE_65_PLUS,
+                   label = NAME),
+    hjust=-0.1,
+    vjust = 0,
+    bg.color = "white") +
+scale_color_jcolors(
+  palette = "pal8") +
+  facet_wrap(
+    ~NAME, #facets will now be determined by the NAME varaible so will get 10 facets
+    ncol = 2) + #set number of columns to 5 pairs of side-by-side facets
   theme_bw() +
-  # customise the theme a bit more
   theme(
      panel.grid.major.y = element_blank(),
      panel.grid.minor.y = element_blank(),
-    # remove legend
-    legend.position = "none",
-    # change margin size
-    plot.margin = margin(1,1,1,1,"mm")) +
-  labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnose rates in England",
-       caption = "Data Source: NHS") +
-  transition_reveal(DATE) #activates display of time series
+     legend.position = "none",
+     plot.margin = margin(1,1,1,1,"mm")) +
+  labs(
+    x = "Month",
+    y = "Dementia diagnosis rate (%)",
+    title = "Dementia diagnosis rates in England",
+    subtitle = "From May 2016 to April 2021",
+    caption = "Data Source: NHS") +
+  transition_reveal(DATE)
 
-animate(gr_int2, #control speed of animation 
-        fps = 7, #control immediate repetition of animation, so viewers have time to digest trends
-        end_pause = 35)
+animate(
+  gr_int2,
+  fps = 7,
+  end_pause = 35)
 ```
 
 **Attempt 2**
@@ -352,74 +457,169 @@ animate(gr_int2, #control speed of animation
 Whilst I appreciated the motion provided by the animated time series, I reckoned that a more effective visualisation would be less overwhelming and would allow to select different regions to facilitate comparisons
 
 ```{r, fig.dim = c(10, 5)}
-gr_int3 <- ggplot(data = df_proc, 
-       mapping = aes(x = DATE, 
-                     y = DIAG_RATE_65_PLUS, 
-                     colour = NAME)) +
-  #customise y axis
-  ylim(c(50, 80)) +
-  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(0.02,0)) +
-  #use geom_line to show regions as lines
-  geom_line(size = 1, alpha =0.9) +
-  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
-  annotate("text", x = as.Date("2016-12-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4,) +
-  # use the palette Safe from the rcartocolor package
-  scale_color_brewer(palette = "Spectral") +
-   #customise theme to plain black and white 
-  theme_bw() +
-  theme(panel.grid.minor = element_blank(),
-          panel.grid.major.y = element_blank(),
-        # change margin size, value order top, right, bottom, left
-    plot.margin = margin(1,1,1,1,"mm")) +
-  #assign labels
-  labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnosis rates in England",
-       caption = "Data Source: NHS")
+#I will fully comment this code to avoid confusion from graph structure changes
+#save grapgh structure into an object for animation
+gr_int3 <- ggplot(
+  data = df_proc,
+  mapping = aes(
+    x = DATE,
+    y = DIAG_RATE_65_PLUS,
+    colour = NAME)) + #use colour = NAME so the regions get different colours
+  ylim( #customise y axis, lower and upper axis limit
+    c(50, 80)) +
+  scale_x_date(
+    limits = as.Date( #introduce and customise x axis limits by the start and end date of data collection 
+      c("2016-05-31","2021-04-30")),
+    date_breaks = "6 month", #use date breaks of 6 month intervals for reading ease
+    date_labels = "%b %Y",
+    expand = c(0.02,0)) + #use expand to control the white space between the axes and the data
+  geom_line( #use geom_line to show regions as lines
+    size = 1) +
+  geom_hline( #use geom_hline to set the benchmark rate, i.e., 66.7
+    yintercept = 66.7,
+    linetype = 2, #2 for a dashed line 
+    size = 1,
+    colour = "black") + #line colour will be black
+  annotate( #label parameters for the benchmark rate line
+    "text",
+    x = as.Date("2016-12-31"), #controls where 'Benchmark' label appears in the graph
+    66.7, #y-value where the label is referenced
+    vjust = -0.5, #label positioning just above the line
+    label = "Benchmark rate", #name of the Benchmark label
+    size = 4,) + #controls label size
+  scale_color_brewer( #back to RColorBrewer and Spectral palette for aesthetics
+    palette = "Spectral") +
+  theme_bw() + #customise theme to plain black and white
+  theme( #customise grid lines
+    panel.grid.major.y = element_blank(), #no minor grid lines for any axis
+    panel.grid.minor.y = element_blank(), #no major y-grid lines so we're only left with major x-grid lines which are helpful for reading the chart
+    #change margin size of the graph, value order: top, right, bottom, left
+    plot.margin = margin( #set parameters and units to mm
+      1,1,1,1,"mm")) + #assign labels
+  labs(
+    x = "Month", #x axis label
+    y = "Dementia diagnosis rate (%)", #y axis label
+    title = "Dementia diagnosis rates in England - May 2016 to April 2021") #assigns chart tittle
 
-ggplotly() %>% 
+#animation
+ggplotly() %>% #final fix to the benchmark label so it is positioned correctly
   style(textposition = "top")
 ```
 
 
-we can do better than that
+I wasn't quite happy with this graph so I made some adjustments:
+
+I renamed the variables of interest so they wouldn't show in all capitals when hovering over the graph 
 
 ```{r}
-# rename
-
-df_int <- dplyr::rename(df_proc, Date = DATE, Location = NAME, Rate = DIAG_RATE_65_PLUS)
+#rename
+df_int <- dplyr::rename(
+  df_proc, #new name first, old name after = sign
+  Date = DATE,
+  Location = NAME,
+  Rate = DIAG_RATE_65_PLUS)
 ```
 
-then create plot
-
+Then created a graph that would allow highlgihts, which required some changes to the graph structure previously used
 
 ```{r, fig.dim = c(10, 5)}
-d <- highlight_key(df_int, ~Location)
 
+#the d object will be useful for highlights based on Location (i.e, previosuly known as NAME variable)
+d <- highlight_key(
+  df_int, ~Location)
+
+#assign graph structure to an object, Not fully commented because previous comments apply to this structure.
 gr_int4 <- ggplot(d,
-            mapping = aes(x = Date, 
-                          y= Rate, 
-                          group = Location, 
-                          colour = Location)) +
+            mapping =
+              aes(x = Date,
+                  y= Rate,
+                  group = Location,
+                  colour = Location)) +
   ylim(c(50, 80)) +
-  scale_x_date(limits = as.Date(c("2016-05-31","2021-04-30")), date_breaks = "6 month", date_labels =  "%b %Y", expand = c(0.02,0)) +
-  #use geom_line to show regions as lines
-  geom_line(size = 1, alpha =0.9) +
-  geom_hline(yintercept = 66.7, linetype = 2, size = 1, colour = "black") +
-  annotate("text", x = as.Date("2016-12-31"), 66.7, vjust = -0.5, label = "Benchmark rate", size = 4,) +
-  # use the palette Safe from the rcartocolor package
-  scale_color_brewer(palette = "Spectral") +
-   #customise theme to plain black and white 
+  scale_x_date(
+    limits = as.Date(
+      c("2016-05-31","2021-04-30")), 
+    date_breaks = "6 month", 
+    date_labels = "%b %Y",
+    expand = c(0.02,0)) +
+  geom_line(
+    size = 1) +
+  geom_hline(
+    yintercept = 66.7,
+    linetype = 2,
+    size = 1,
+    colour = "black") +
+  annotate(
+    "text",
+    x = as.Date("2016-12-31"),
+    66.7,
+    vjust = -0.5,
+    label = "Benchmark rate",
+    size = 4) +
+  scale_color_brewer(
+    palette = "Spectral") +
   theme_bw() +
-  theme(panel.grid.minor = element_blank(),
-          panel.grid.major.y = element_blank(),
-        # change margin size, value order top, right, bottom, left
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
     plot.margin = margin(1,1,1,1,"mm")) +
-  #assign labels
   labs(x = "Month", 
        y = "Dementia diagnoses rate",
-       title = "Dementia diagnosis rates in England",
-       caption = "Data Source: NHS")
+       title = "Dementia diagnosis rates in England")
+
+gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y")) %>% 
+  style(textposition = "top") 
+
+highlight(gg, 
+          "plotly_hover",)
+
+gg %>% layout(hovermode = "x unified")
+```
+
+
+```{r}
+#the d object will be useful for hilghlights based on Location (i.e, previosuly known as NAME variable)
+d <- highlight_key(
+  df_int, ~Location)
+
+#assign graph structure to an object, Not fully commented because previous comments apply to this structure.
+gr_int4 <- ggplot(d,
+            mapping =
+              aes(x = Date,
+                  y= Rate,
+                  group = Location,
+                  colour = Location)) +
+  ylim(c(50, 80)) +
+  scale_x_date(
+    limits = as.Date(
+      c("2016-05-31","2021-04-30")), 
+    date_breaks = "6 month", 
+    date_labels = "%b %Y",
+    expand = c(0.02,0)) +
+  geom_line(
+    size = 1) +
+  geom_hline(
+    yintercept = 66.7,
+    linetype = 2,
+    size = 1,
+    colour = "black") +
+  annotate(
+    "text",
+    x = as.Date("2016-12-31"),
+    66.7,
+    vjust = -0.5,
+    label = "Benchmark rate",
+    size = 4) +
+  scale_color_brewer(
+    palette = "Spectral") +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    plot.margin = margin(1,1,1,1,"mm")) +
+  labs(x = "Month", 
+       y = "Dementia diagnoses rate",
+       title = "Dementia diagnosis rates in England")
 
 gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y")) %>% 
   style(textposition = "top") %>% 
@@ -429,10 +629,8 @@ highlight(gg,
           #"plotly_hover",
           defaultValues = "England")
 
-#gg %>% layout(hovermode = "x unified")
+gg %>% layout(hovermode = "x unified")
 ```
-
-
 
 Almost there 
 
