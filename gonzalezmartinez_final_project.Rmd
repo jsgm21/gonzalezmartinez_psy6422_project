@@ -585,7 +585,7 @@ highlight(gg,
 
 ```
 
-I like this graph because by default it lets users highlight different regions at once, which makes comparisons between regions easier. This graph also provides an interactive legend feature. **Playing with the single and double click features in the legend on different region names!**
+I like this graph because by default it lets users highlight different regions at once, which makes comparisons between regions easier. This graph also provides an interactive legend feature. **Play with the single and double click features in the legend on different region names!**
 
 I wanted to introduce a unified hovering line to show values from different regions simultaneously, but this is where I found the limit to my coding abilities (more about this graph idea in the appendix).
 
