@@ -185,9 +185,10 @@ Then I checked that the naming issues have been solved. I also made a few tweaks
 #I used a structure similar to the previous graph. I will only comment code to highlight differences.
 ggplot(
   data = df_proc,
-  mapping = aes(x = DATE,
-                y = DIAG_RATE_65_PLUS,
-                colour = NAME)) +
+  mapping = aes(
+    x = DATE,
+    y = DIAG_RATE_65_PLUS,
+    colour = NAME)) +
   ylim(
     c(50, 80)) + 
   #introduce and customise x axis limits by the start and end date of data collection 
@@ -241,6 +242,7 @@ I developed this animated plot with the intention to visualise better the progre
 
 ```{r}
 #I used a structure similar to the previous graph. I will only comment code to highlight differences.
+
 #save graph structure into an object that will be used later for animation
 gr_int0 <- ggplot(
   data = df_proc,
@@ -457,6 +459,7 @@ Whilst I appreciated the motion provided by the animated time series, I reckoned
 
 ```{r, fig.dim = c(10, 5)}
 #I will fully comment this code to avoid confusion from graph structure changes
+
 #save grapgh structure into an object for animation
 gr_int3 <- ggplot(
   data = df_proc,
@@ -506,7 +509,7 @@ ggplotly() %>% #final fix to the benchmark label so it is positioned correctly
 ```
 
 
-I wasn't quite happy with this graph so I made some adjustments.
+I wasn not quite happy with this graph so I made some adjustments.
 
 #### **The final visualisation**
 
@@ -522,14 +525,14 @@ df_int <- dplyr::rename(
 ```
 
 
-Then, I created a graph that would allow highlights, which required some changes to the graph structure previously used. In this graph
+Then, I created a graph that would allow highlights, which required some changes to the graph structure previously used.
 
 ```{r, fig.dim = c(10, 5)}
 #the d object will be useful for highlights based on Location (i.e, previosuly known as NAME variable)
 d <- highlight_key(
   df_int, ~Location)
 
-#assign graph structure to an object, Not fully commented because previous comments apply to this structure.
+#assign graph structure to an object, code not fully commented because previous comments apply to this structure.
 gr_int4 <- ggplot(d,
             mapping =
               aes(x = Date,
@@ -568,7 +571,9 @@ gr_int4 <- ggplot(d,
        y = "Dementia diagnosis rate (%)",
        title = "Dementia diagnosis rates in England - May 2016 to April 2021")
 
-#make anew object to customise the inetractive plot
+#Final visualisation - variation 1. WARNING: The code from here below produces a graph that allows hovering in different lines but cannot show values for different regions simultaneously.
+
+#make a new object to customise the interactive plot
 gg <- ggplotly(gr_int4, 
                tooltip = c("text", "x", "y")) %>% #tool tip feature control the text when hovering over the graph
   style(textposition = "top") 
@@ -577,21 +582,20 @@ gg <- ggplotly(gr_int4,
 highlight(gg, 
           "plotly_hover", #mouse hovering highlights one line at a time
           defaultValues = "England") #graph will show England highlighted automatically
+
 ```
 
-I like this graph because by default it shows the national trend and people can then make comparisons between regions by playing with the singe and double click features in the legend. **You should give it a try!**
+I like this graph because by default it lets users highlight different regions at once, which makes comparisons between regions easier. This graph also provides an interactive legend feature. **Playing with the single and double click features in the legend on different region names!**
 
-I wanted to introduce a unified hovering line to show values from different regions simultaneously, but this is where I found the limit to my coding abilities (More about this graph idea in the appendix).
+I wanted to introduce a unified hovering line to show values from different regions simultaneously, but this is where I found the limit to my coding abilities (more about this graph idea in the appendix).
 
 #### **Summary**
-
-*Brief thoughts on what you have learnt, what you might do next if you had more time / more data*
 
 I used publicly available data from the NHS to graph a time series of dementia diagnosis rates in England. 
 
 My graph depicts that: 
 
-* From May 2016 to March 2020, the national rate was consistently above the benchmark rate (66.7%). London, the North East, the North West, the East Midlands, and Yorkshire and the Humber were consistently above the national rate and benchmark rates. The East of England, the South East, the South West, and the West Midlands were consistently below the benchmark and national rate 
+* From May 2016 to March 2020, the national rate was consistently above the benchmark rate (66.7%). London, the North East, the North West, the East Midlands, and Yorkshire and the Humber were consistently above the national and benchmark rates. The East of England, the South East, the South West, and the West Midlands were consistently below the benchmark and national rate 
 
 * After March 2020, all dementia diagnosis rates for all regions start dropping. By December 2020, all rates were below the benchmark rate.
 
@@ -605,177 +609,23 @@ Knowing these diagnosis rates is important because, as explained by the NHS, the
 
 **Future steps**
 
-Too many! But primarily develop a visualisation that allows both highlighting and simultaneous hovering of all regions. It would also be interesting to perform some model fitting on the data and predict trends of diagnosis rates. One could predict trends using data from May 2016 to March 2020, then compare predicted trends against observed trends after March 2020. Doing so would provide an insight into the impact of COVID-19 on data collection and trends.
+Too many! Primarily, develop a visualisation that allows both highlighting and simultaneous hovering of all regions. It would also be interesting to perform some model fitting on the data and predict trends of diagnosis rates. One could predict rates using data from May 2016 to March 2020, then compare predicted trends against observed trends after March 2020. Doing so would provide an insight into the impact of COVID-19 on data collection and trends.
 
 #### **Appendix**
 
+I was not able to write code to reconcile `highlight("plotly_hover", defaultValues = "England")` and `layout(hovermode = "x unified")`
 
 ```{r, fig.dim = c(10, 5)}
-gg %>% layout(hovermode = "x unified")
-```
+#the code below is referencing objects previously defined in the chunk of code immediately before this one
 
+#Final visualisation - variation 2. WARNING: The code from here below produces a graph that allows unified hovering to show values form different regions, but the highlighting goes wrong. The interactive features also go wrong.
 
-```{r}
-#the d object will be useful for hilghlights based on Location (i.e, previosuly known as NAME variable)
-d <- highlight_key(
-  df_int, ~Location)
-
-#assign graph structure to an object, Not fully commented because previous comments apply to this structure.
-gr_int4 <- ggplot(d,
-            mapping =
-              aes(x = Date,
-                  y= Rate,
-                  group = Location,
-                  colour = Location)) +
-  ylim(c(50, 80)) +
-  scale_x_date(
-    limits = as.Date(
-      c("2016-05-31","2021-04-30")), 
-    date_breaks = "6 month", 
-    date_labels = "%b %Y",
-    expand = c(0.02,0)) +
-  geom_line(
-    size = 1) +
-  geom_hline(
-    yintercept = 66.7,
-    linetype = 2,
-    size = 1,
-    colour = "black") +
-  annotate(
-    "text",
-    x = as.Date("2016-12-31"),
-    66.7,
-    vjust = -0.5,
-    label = "Benchmark rate",
-    size = 4) +
-  scale_color_brewer(
-    palette = "Spectral") +
-  theme_bw() +
-  theme(
-    panel.grid.minor = element_blank(),
-    panel.grid.major.y = element_blank(),
-    plot.margin = margin(1,1,1,1,"mm")) +
-  labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnosis rates in England")
-
-gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y")) %>% 
+gg <- ggplotly(gr_int4, 
+                tooltip = c("text", "x", "y")) %>% 
   style(textposition = "top") %>% 
   layout(hovermode = "x unified")
 
-highlight(gg, 
-          #"plotly_hover",
+highlight(gg,
           defaultValues = "England")
-
-gg %>% layout(hovermode = "x unified")
 ```
-
-Almost there 
-
-```{r}
-d <- highlight_key(df_int, ~Location)
-
-
-gr_int4 <- ggplot(d,
-            aes(Date, Rate, group = Location)) +
-  geom_line()
-
-gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y"))
-
-highlight(gg, "plotly_hover", defaultValues = "England")
-```
-
-
-```{r, fig.dim = c(10, 5)}
-
-ggplotly(gr_int3, tooltip = c("text", "x", "y")) %>% 
-  style(textposition = "top") %>% 
-  layout(hovermode = "x unified")
-```
-
-
-
-
-
-
-
-attempt 4
-```{r}
-
-#library(highcharter) am I including highcarts
-library(tidyverse)
-library(highcharter)
-
-hchart(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME)) %>% 
- # hc_yAxis(reversed = TRUE) %>% 
-  hc_plotOptions(
-    series = list(
-      events = list(
-        mouseOver = JS("function() { if(this.options.color !== 'red') {this.update({color: 'red'})} }"),
-        mouseOut = JS("function() { if(this.options.color === 'red') {this.update({color: '#ddd'})} }")
-        ),
-      states = list(
-        hover = list(
-          enabled = FALSE,
-          lineWidth = 5,
-          colour = "red"
-        )
-      )
-    )) #%>% 
-  #hc_colors("#dbdbdb")
-
-
-
-```
-
-
-attempt 3
-
-```{r}
-
-highchart(type = "stock") %>% 
-  hc_add_series(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME)) %>% 
-  #hc_add_theme(hc_theme_darkunica()) %>% 
-  hc_title(text = "Dementia Diagnoses Rates in England: National and Regional Trends")
-  
-
-```
-
-
-attempt 2 
-
-```{r}
-
-hchart(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME))
-
-```
-
-
-Run
-```{r}
-
-
-```
-
-Resources:
-
-From static to animated time series: the tidyverse way
-
-https://medium.com/epfl-extension-school/from-static-to-animated-time-series-the-tidyverse-way-d696eb75f2fa
-
-https://blog.exploratory.io/filter-data-with-dplyr-76cf5f1a258e
-
-
-HOW CAN I FORMAT A STRING CONTAINING A DATE INTO R “DATE” OBJECT? | R FAQ
-
-https://stats.idre.ucla.edu/r/faq/how-can-i-format-a-string-containing-a-date-into-r-date-object/
-
-Plotting multiple variables at once using ggplot2 and tidyr
-
-https://scc.ms.unimelb.edu.au/resources-list/simple-r-scripts-for-analysis/r-scripts
-
-
-changing ggplot2::facet_wrap title from the default
-https://stackoverflow.com/questions/48860158/changing-ggplot2facet-wrap-title-from-the-default/48860657
-
 
