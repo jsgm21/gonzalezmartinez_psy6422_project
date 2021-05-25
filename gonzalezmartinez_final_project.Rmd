@@ -24,7 +24,7 @@ As I was playing around with the dashboard, I noticed that there were no compari
 
 *2) Are there regions that have consistently been above or below the national diagnosis rates and the benchmark rate?* 
 
-**For those unfamiliar with English geography, here's a picture depicting the 9 statistical regions of England:**
+**For those unfamiliar with English geography, here's a picture depicting the 9 (statistical) regions of England:**
 
 ```{r out.width = "50%", fig.align = "left", echo = FALSE}
 knitr::include_graphics("images/regions_of_england_reference_map.png")
@@ -48,7 +48,6 @@ library(RColorBrewer)
 library(jcolors)
 library(plotly)
 library(plyr)
-#library(highcharter) am I including highcarts
 ```
 
 **Step 1:** Get the data in
@@ -75,14 +74,14 @@ Let's have a look at the variables in the data set and a random sample of observ
 ```{r}
 names(df_2017) #returns the names of the variables in a data frame
 
-paged_table( #use paged_Table to make table output neat for publishing
+paged_table( #use to make table output neat for publishing
   sample_n( #returns a random sample of 10 observations
     df_2017, 10))
 ```
 
 A couple of challenges were clear:
 
-**Challenge 1:** Dates were not in the correct format (YYYY/MM/DD) and class type (i.e., date). 
+**Challenge 1:** Dates were not in the correct format (YYYY-MM-DD) and class type (i.e., date). 
 
 **Challenge 2:** The variable "MEASURE" needed to be split into separate variables. The NHS collected several dementia measures but I was only interested in visualising the measure "DIAG_RATE_65_PLUS"   
 
@@ -507,7 +506,9 @@ ggplotly() %>% #final fix to the benchmark label so it is positioned correctly
 ```
 
 
-I wasn't quite happy with this graph so I made some adjustments:
+I wasn't quite happy with this graph so I made some adjustments.
+
+#### **The final visualisation**
 
 I renamed the variables of interest so they wouldn't show in all capitals when hovering over the graph 
 
@@ -520,9 +521,8 @@ df_int <- dplyr::rename(
   Rate = DIAG_RATE_65_PLUS)
 ```
 
-#### **The final visualisation**
 
-Then created a graph that would allow highlights, which required some changes to the graph structure previously used. In this graph
+Then, I created a graph that would allow highlights, which required some changes to the graph structure previously used. In this graph
 
 ```{r, fig.dim = c(10, 5)}
 #the d object will be useful for highlights based on Location (i.e, previosuly known as NAME variable)
@@ -573,19 +573,39 @@ gg <- ggplotly(gr_int4,
                tooltip = c("text", "x", "y")) %>% #tool tip feature control the text when hovering over the graph
   style(textposition = "top") 
 
+#use highlight to manipulate highlight settings in graph
 highlight(gg, 
           "plotly_hover", #mouse hovering highlights one line at a time
           defaultValues = "England") #graph will show England highlighted automatically
 ```
 
-I like this plot because by default it shows the national trend and people can then make comparisons between regions by playing with the Double click features in the legend. **You should give it a try!**
+I like this graph because by default it shows the national trend and people can then make comparisons between regions by playing with the singe and double click features in the legend. **You should give it a try!**
 
-I wanted to introduce a unified hovering line to show values from different regions simultaneously, but thisis where I found the limit to my coding abilities. More about this graph idea in the appendix
-
+I wanted to introduce a unified hovering line to show values from different regions simultaneously, but this is where I found the limit to my coding abilities (More about this graph idea in the appendix).
 
 #### **Summary**
 
-Brief thoughts on what you have learnt, what you might do next if you had more time / more data
+*Brief thoughts on what you have learnt, what you might do next if you had more time / more data*
+
+I used publicly available data from the NHS to graph a time series of dementia diagnosis rates in England. 
+
+My graph depicts that: 
+
+* From May 2016 to March 2020, the national rate was consistently above the benchmark rate (66.7%). London, the North East, the North West, the East Midlands, and Yorkshire and the Humber were consistently above the national rate and benchmark rates. The East of England, the South East, the South West, and the West Midlands were consistently below the benchmark and national rate 
+
+* After March 2020, all dementia diagnosis rates for all regions start dropping. By December 2020, all rates were below the benchmark rate.
+
+Knowing these diagnosis rates is important because, as explained by the NHS, they can guide policies and access to services for the treatment of dementia in different areas.
+
+**Before jumping to conclusions, keep in mind these caveats: ** 
+
+*1)* The outbreak of COVID-19 has impacted the way General Practices work, which are the primary data sources for dementia rates. Use caution when reading trends after March 2020.
+
+*2)* This was purely a data visualisation exercise. No statistical comparisons were calculated. The NHS advises to interpret trends carefully and from an observational rather than a causal point of view.
+
+**Future steps**
+
+Too many! But primarily develop a visualisation that allows both highlighting and simultaneous hovering of all regions. It would also be interesting to perform some model fitting on the data and predict trends of diagnosis rates. One could predict trends using data from May 2016 to March 2020, then compare predicted trends against observed trends after March 2020. Doing so would provide an insight into the impact of COVID-19 on data collection and trends.
 
 #### **Appendix**
 
@@ -682,7 +702,7 @@ ggplotly(gr_int3, tooltip = c("text", "x", "y")) %>%
 attempt 4
 ```{r}
 
-
+#library(highcharter) am I including highcarts
 library(tidyverse)
 library(highcharter)
 

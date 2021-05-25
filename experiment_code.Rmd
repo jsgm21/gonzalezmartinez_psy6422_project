@@ -1,0 +1,113 @@
+---
+title: 'Experiment code for project: Not for publication'
+author: "JSGM"
+date: "25/05/2021"
+output: html_document
+---
+Almost there 
+
+```{r}
+d <- highlight_key(df_int, ~Location)
+
+
+gr_int4 <- ggplot(d,
+            aes(Date, Rate, group = Location)) +
+  geom_line()
+
+gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y"))
+
+highlight(gg, "plotly_hover", defaultValues = "England")
+```
+
+
+```{r, fig.dim = c(10, 5)}
+
+ggplotly(gr_int3, tooltip = c("text", "x", "y")) %>% 
+  style(textposition = "top") %>% 
+  layout(hovermode = "x unified")
+```
+
+
+
+
+
+
+
+attempt 4
+```{r}
+
+#library(highcharter) am I including highcarts
+library(tidyverse)
+library(highcharter)
+
+hchart(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME)) %>% 
+ # hc_yAxis(reversed = TRUE) %>% 
+  hc_plotOptions(
+    series = list(
+      events = list(
+        mouseOver = JS("function() { if(this.options.color !== 'red') {this.update({color: 'red'})} }"),
+        mouseOut = JS("function() { if(this.options.color === 'red') {this.update({color: '#ddd'})} }")
+        ),
+      states = list(
+        hover = list(
+          enabled = FALSE,
+          lineWidth = 5,
+          colour = "red"
+        )
+      )
+    )) #%>% 
+  #hc_colors("#dbdbdb")
+
+
+
+```
+
+
+attempt 3
+
+```{r}
+
+highchart(type = "stock") %>% 
+  hc_add_series(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME)) %>% 
+  #hc_add_theme(hc_theme_darkunica()) %>% 
+  hc_title(text = "Dementia Diagnoses Rates in England: National and Regional Trends")
+  
+
+```
+
+
+attempt 2 
+
+```{r}
+
+hchart(df_proc, "line", hcaes(x = DATE, y = DIAG_RATE_65_PLUS, group = NAME))
+
+```
+
+
+Run
+```{r}
+
+
+```
+
+Resources:
+
+From static to animated time series: the tidyverse way
+
+https://medium.com/epfl-extension-school/from-static-to-animated-time-series-the-tidyverse-way-d696eb75f2fa
+
+https://blog.exploratory.io/filter-data-with-dplyr-76cf5f1a258e
+
+
+HOW CAN I FORMAT A STRING CONTAINING A DATE INTO R “DATE” OBJECT? | R FAQ
+
+https://stats.idre.ucla.edu/r/faq/how-can-i-format-a-string-containing-a-date-into-r-date-object/
+
+Plotting multiple variables at once using ggplot2 and tidyr
+
+https://scc.ms.unimelb.edu.au/resources-list/simple-r-scripts-for-analysis/r-scripts
+
+
+changing ggplot2::facet_wrap title from the default
+https://stackoverflow.com/questions/48860158/changing-ggplot2facet-wrap-title-from-the-default/48860657
