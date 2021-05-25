@@ -33,4 +33,4 @@ gonzalezmartinez_final_project.html - knitted file, the data visualisation proje
 
 # Download advice - READ
 
-If you download this project as a zip folder, extract the folder from the zip package and save it locally. Otherwise, you will have issues replicating the code used for this project. 
+If you download this project as a zip folder, extract the folder from the zip package and save it locally. Otherwise, you will have issues running the code in the 'gonzalezmartinez_final_project.Rmd' file.
