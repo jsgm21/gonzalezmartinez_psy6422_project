@@ -520,10 +520,11 @@ df_int <- dplyr::rename(
   Rate = DIAG_RATE_65_PLUS)
 ```
 
-Then created a graph that would allow highlgihts, which required some changes to the graph structure previously used
+#### **The final visualisation**
+
+Then created a graph that would allow highlights, which required some changes to the graph structure previously used. In this graph
 
 ```{r, fig.dim = c(10, 5)}
-
 #the d object will be useful for highlights based on Location (i.e, previosuly known as NAME variable)
 d <- highlight_key(
   df_int, ~Location)
@@ -564,15 +565,32 @@ gr_int4 <- ggplot(d,
     panel.grid.major.y = element_blank(),
     plot.margin = margin(1,1,1,1,"mm")) +
   labs(x = "Month", 
-       y = "Dementia diagnoses rate",
-       title = "Dementia diagnosis rates in England")
+       y = "Dementia diagnosis rate (%)",
+       title = "Dementia diagnosis rates in England - May 2016 to April 2021")
 
-gg <- ggplotly(gr_int4, tooltip = c("text", "x", "y")) %>% 
+#make anew object to customise the inetractive plot
+gg <- ggplotly(gr_int4, 
+               tooltip = c("text", "x", "y")) %>% #tool tip feature control the text when hovering over the graph
   style(textposition = "top") 
 
 highlight(gg, 
-          "plotly_hover",)
+          "plotly_hover", #mouse hovering highlights one line at a time
+          defaultValues = "England") #graph will show England highlighted automatically
+```
 
+I like this plot because by default it shows the national trend and people can then make comparisons between regions by playing with the Double click features in the legend. **You should give it a try!**
+
+I wanted to introduce a unified hovering line to show values from different regions simultaneously, but thisis where I found the limit to my coding abilities. More about this graph idea in the appendix
+
+
+#### **Summary**
+
+Brief thoughts on what you have learnt, what you might do next if you had more time / more data
+
+#### **Appendix**
+
+
+```{r, fig.dim = c(10, 5)}
 gg %>% layout(hovermode = "x unified")
 ```
 
@@ -658,8 +676,7 @@ ggplotly(gr_int3, tooltip = c("text", "x", "y")) %>%
 
 
 
-#### **Summary**
-Brief thoughts on what you have learnt, what you might do next if you had more time / more data
+
 
 
 attempt 4
